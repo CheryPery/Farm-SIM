@@ -1,2 +1,2 @@
-# Farm-SIM
+# Farm_Sim
 Proiect la TP
