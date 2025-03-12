@@ -1,2 +1,2 @@
 # Farm-SIM
-lalala
+Proiect la TP
