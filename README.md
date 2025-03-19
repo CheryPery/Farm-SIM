@@ -5,9 +5,9 @@ Jucătorul are sub controlul său o o fermă abandonată. Misiunea sa este să r
 ## Elemente Cheie:
 ### Agricultură:
 
-• Cultivă diverse plante.
-• Udă și fertilizează.
-• Vinde recolta sau folosește-o pentru rețete și meșteșuguri.
+- Cultivă diverse plante.
+- Udă și fertilizează.
+- Vinde recolta sau folosește-o pentru rețete și meșteșuguri.
 
 ### Economie & Management:
 
