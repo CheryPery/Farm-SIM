@@ -9,7 +9,7 @@ void GameUpdate();
 void GameRender();
 void GameShutdown();
 void DrawTile(int pos_x, int pos_y, int texture_index_x, int texture_index_y );
-
+//comment
 const int screenWidth = 800;
 const int screenHeight = 600;
 
