@@ -78,11 +78,16 @@ typedef enum {
 typedef struct {
     ItemType type;
     int count;
+    Texture2D icon; 
+    int maxStack;
 } InventorySlot;
 
 typedef struct {
     InventorySlot slots[INVENTORY_SLOTS];
     int selectedHotbarSlot;
+    bool isOpen;
+    Vector2 position;
+    Vector2 size;
 } InventorySystem;
 
 InventorySystem inventory;
@@ -127,6 +132,8 @@ void Game_Startup() {
     textures[TEXTURE_TILEMAP] = LoadTextureFromImage(image);
     UnloadImage(image);
 
+    SetTextureFilter(textures[TEXTURE_TILEMAP], TEXTURE_FILTER_POINT);
+
     for(int i = 0; i < WORLD_WIDTH; i++) {
         for(int j = 0; j < WORLD_HEIGHT; j++) {
             world[i][j] = (sTile)
@@ -156,17 +163,23 @@ void Game_Startup() {
 
     // Initial inventory
 
-    inventory.selectedHotbarSlot = 0;
-
-    for (int  i = 0; i < INVENTORY_SLOTS; i++) {
-        inventory.slots[i].type = ITEM_NONE;
-        inventory.slots[i].count = 0;
+    inventory.isOpen = false;
+    inventory.position = (Vector2){screenWidth/2 - 200, screenHeight/2 - 150};
+    inventory.size = (Vector2){400, 300};
+    
+    for (int i = 0; i < INVENTORY_SLOTS; i++) {
+        inventory.slots[i] = (InventorySlot){
+            .type = ITEM_NONE,
+            .count = 0,
+            .maxStack = 64 
+        };
     }
     
     // Item demo
-    inventory.slots[0] = (InventorySlot){ITEM_HOE, 1};
-    inventory.slots[1] = (InventorySlot){ITEM_WATERING_CAN, 1};
-    inventory.slots[2] = (InventorySlot){ITEM_SEED, 5};
+    inventory.slots[0] = (InventorySlot){ITEM_HOE, 1, LoadTexture("assets/hoe_icon.png"), 1};
+    inventory.slots[1] = (InventorySlot){ITEM_WATERING_CAN, 1, LoadTexture("assets/watering_can_icon.png"), 1};
+    inventory.slots[2] = (InventorySlot){ITEM_SEED, 5, LoadTexture("assets/seed_icon.png"), 64};
+    
 }
 
 
@@ -209,16 +222,26 @@ void Game_Update() {
         int tileY = (int)(mousePos.y / TILE_HEIGHT);
     
         if (tileX >= 0 && tileX < WORLD_WIDTH && tileY >= 0 && tileY < WORLD_HEIGHT) {
-            // Harvest ready crops
             if (world[tileX][tileY].type == TILE_TYPE_CROP_READY) {
-                world[tileX][tileY].type = TILE_TYPE_DIRT; // Reset to dirt
+                world[tileX][tileY].type = TILE_TYPE_DIRT;
                 world[tileX][tileY].growthTime = 0.0f;
                 
-                // Add harvested item to inventory (e.g., wheat)
+                bool added = false;
                 for (int i = 0; i < INVENTORY_SLOTS; i++) {
                     if (inventory.slots[i].type == ITEM_WHEAT) {
                         inventory.slots[i].count++;
+                        added = true;
                         break;
+                    }
+                }
+
+                if (!added){
+                    for (int i = 0; i < INVENTORY_SLOTS; i++) {
+                        if (inventory.slots[i].type == ITEM_NONE) {
+                            inventory.slots[i].type = ITEM_WHEAT;
+                            inventory.slots[i].count = 1;
+                            break;
+                        }
                     }
                 }
             }
@@ -228,12 +251,10 @@ void Game_Update() {
     // Light color based on time
 
     if (worldTime.dayTime >= 4.0f && worldTime.dayTime <= 6.0f) {
-        // Dawn transition (4-6)
         float factor = (worldTime.dayTime - 4.0f) / 2.0f;
         currentLightColor = LerpColor(NIGHT_COLOR, DAY_COLOR, factor);
     }
     else if (worldTime.dayTime >= 17.0f && worldTime.dayTime <= 19.0f) {
-        // Dusk transition (17-19)
         float factor = (worldTime.dayTime - 17.0f) / 2.0f;
         currentLightColor = LerpColor(DAY_COLOR, NIGHT_COLOR, factor);
     }
@@ -249,7 +270,6 @@ void Game_Update() {
     if (IsKeyPressed(KEY_EQUAL)) worldTime.timeSpeed *= 5.0f;
 
     // Movement
-
     Vector2 inputDir = {0};
 
     if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
@@ -308,7 +328,8 @@ void Game_Update() {
 
     if (zoomControlEnabled) {
         if (wheel != 0) {
-            camera.zoom = Clamp(camera.zoom + wheel * 0.125f, 3.0f, 8.0f);
+            float newZoom = camera.zoom + (wheel > 0 ? 1.0f : -1.0f);
+            camera.zoom = Clamp(newZoom, 2.0f, 8.0f);
         }
     }
     
@@ -473,6 +494,7 @@ void Game_Render() {
                 DrawRectangle(100 + col*50, 100 + row*50, 40, 40, LIGHTGRAY);
             }
         }
+
         // Draw Time Displey
         const char* timeOfDay = "Midday";
         if (worldTime.isNight) timeOfDay = "Night";
@@ -509,8 +531,18 @@ void Game_Shutdown() {
 // Helpig functions
 
 void DrawWorld() {
-    for(int i = 0; i < WORLD_WIDTH; i++) {
-        for(int j = 0; j < WORLD_HEIGHT; j++) {
+    int startX = (int)(camera.target.x / TILE_WIDTH) - (int)(screenWidth / (2 * TILE_WIDTH * camera.zoom)) - 1;
+    int startY = (int)(camera.target.y / TILE_HEIGHT) - (int)(screenHeight / (2 * TILE_HEIGHT * camera.zoom)) - 1;
+    int endX = startX + (int)(screenWidth / (TILE_WIDTH * camera.zoom)) + 2;
+    int endY = startY + (int)(screenHeight / (TILE_HEIGHT * camera.zoom)) + 2;
+
+    startX = Clamp(startX, 0, WORLD_WIDTH - 1);
+    startY = Clamp(startY, 0, WORLD_HEIGHT - 1);
+    endX = Clamp(endX, 0, WORLD_WIDTH - 1);
+    endY = Clamp(endY, 0, WORLD_HEIGHT - 1);
+
+    for(int i = startX; i <= endX; i++) {
+        for(int j = startY; j <= endY; j++) {
             sTile tile = world[i][j];
             int tx = 0, ty = 0;
             
@@ -533,8 +565,12 @@ void DrawWorld() {
 
 void DrawTile(int pos_x, int pos_y, int texture_index_x, int texture_index_y ){
 
-    Rectangle source = { (float)texture_index_x * TILE_WIDTH, (float)texture_index_y * TILE_HEIGHT, (float)TILE_WIDTH, (float)TILE_HEIGHT }; 
-    Rectangle dest = { (float)(pos_x), (float)(pos_y), (float)TILE_WIDTH, (float)TILE_HEIGHT };
+    int drawX = (int)(pos_x);
+    int drawY = (int)(pos_y);
+
+    Rectangle source = {((float)texture_index_x * TILE_WIDTH), ((float)texture_index_y * TILE_HEIGHT), (float)TILE_WIDTH, (float)TILE_HEIGHT};
+    Rectangle dest = {(float)drawX, (float)drawY, (float)TILE_WIDTH, (float)TILE_HEIGHT};
+    
     DrawTexturePro(textures[TEXTURE_TILEMAP], source, dest, (Vector2){0}, 0.0f, WHITE);
 }
 
