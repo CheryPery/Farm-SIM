@@ -7,12 +7,11 @@ Jucătorul are sub controlul său o o fermă abandonată. Misiunea sa este să r
 
 - Cultivă diverse plante.
 - Udă și fertilizează.
-- Vinde recolta sau folosește-o pentru rețete și meșteșuguri.
+- Vinde recolta sau folosește-o pentru rețete.
 
 ### Economie & Management:
 
 - Dezvoltă-ți ferma prin achiziționarea de unelte și extinderi.
-- Sistem de crafting pentru obiecte utile și decor.
     
 ### Stil Grafic & Tehnic:
 
